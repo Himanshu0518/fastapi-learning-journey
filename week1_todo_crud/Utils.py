@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 import os
 from dataclasses import dataclass
 
-DATABASE_FILE = 'database.json'
+DATABASE_FILE = 'task_db.json'
 if not os.path.exists(DATABASE_FILE):
     with open(DATABASE_FILE, 'w') as f:
         json.dump([], f)
@@ -22,7 +22,10 @@ def db_len():
 class configs:
     DATABASE_FILE: str = DATABASE_FILE
     DB_LEN : int = db_len()
-    
+    User_DATABASE_FILE: str = 'user_db.json'
+    if not os.path.exists(User_DATABASE_FILE):
+        with open(User_DATABASE_FILE, 'w') as f:
+            json.dump([], f)
 
 class Utils:
     @staticmethod
@@ -52,10 +55,8 @@ class Utils:
 
             
         tasks.append(task.dict())
-
         with open(DATABASE_FILE, 'w') as f:
                 json.dump(tasks, f, indent=4)
-
         return task
         
 
@@ -93,4 +94,21 @@ class Utils:
 
         raise HTTPException(status_code=404, detail="Task not found")
 
+    @staticmethod
+    def  load_json(file_path):
+        """
+        Loads a JSON file and returns its content.
+        """
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
         
+        with open(file_path, 'r') as f:
+            return json.load(f)
+        
+    @staticmethod
+    def save_json(file_path, data):
+        """
+        Saves data to a JSON file.
+        """
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=4)

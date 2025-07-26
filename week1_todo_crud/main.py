@@ -1,30 +1,15 @@
-from fastapi import FastAPI, HTTPException,Query, Depends
+from fastapi import FastAPI, HTTPException,Form, Depends
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from typing import  Optional, Annotated
-
-
-from Utils import Utils,configs
+from Utils import Utils, configs
+from models import Task, FilterParams,LoginModel,SignupModel
+from typing import  Annotated,List
 
 app = FastAPI()
-
-class Task(BaseModel):
-    id: int
-    title: Annotated[str, Field(min_length=1, max_length=50)]
-    description: Annotated[str, Field(min_length=1, max_length=200)]
-    completed: bool = False
-
-class FilterParams(BaseModel):
-    skip: Annotated[int, Query(ge=0, description="Items to skip")] = 0
-    limit: Annotated[int, Query(ge=1, le=100, description="Items to return")] = configs.DB_LEN
-    order_by: Optional[str] = Query(None, pattern="^(asc|desc)$")
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
-
-from typing import List
 
 @app.get("/tasks/", response_model=List[Task])
 def read_task(
@@ -61,3 +46,30 @@ def delete_task(task_id: int):
         return JSONResponse(status_code=204, content=None)
     except HTTPException as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
+
+@app.post("/login")
+def login(data: Annotated[LoginModel,Form]):
+    credentials = data.model_dump(exclude={"confirm_password"})
+    users = Utils.load_json(configs.User_DATABASE_FILE)
+    
+    for user in users:
+        username_match = user.get("username") == credentials.get("username")
+        email_match = user.get("email") == credentials.get("email")
+        password_match = user.get("password") == credentials.get("password")
+
+        if (username_match or email_match) and password_match:
+            return JSONResponse(status_code=200, content={"message": "Login successful"})
+
+    # If loop completes with no match
+    raise HTTPException(status_code=400, detail="Invalid credentials or user does not exist")
+        
+
+@app.post("/signup")
+def signup(data: Annotated[SignupModel,Form]):
+    credentials = data.model_dump(exclude={"confirm_password"})
+    users = Utils.load_json(configs.User_DATABASE_FILE)
+    if credentials in users:
+        raise HTTPException(status_code=400, detail="User already exists")
+    users.append(credentials)
+    Utils.save_json(configs.User_DATABASE_FILE, users)
+    return JSONResponse(status_code=201, content={"message": "User created successfully"}) 
