@@ -22,7 +22,6 @@ class SignupModel(BaseModel):
     confirm_password: Annotated[str, Field(min_length=6, max_length=20)]
 
    
- 
 class LoginModel(BaseModel):
     username: Optional[str] = Field(default=None, min_length=3, max_length=20)
     password: Annotated[str, Field(min_length=6, max_length=20)]
@@ -33,3 +32,7 @@ class LoginModel(BaseModel):
         if not self.username and not self.email:
             raise ValueError("Either username or email must be provided for login.")
         return self
+    
+class User(BaseModel):
+    username: Annotated[str, Field(min_length=3, max_length=20)]
+   

@@ -1,19 +1,29 @@
 from fastapi import FastAPI, HTTPException,Form, Depends
 from fastapi.responses import JSONResponse
 from Utils import Utils, configs
-from models import Task, FilterParams,LoginModel,SignupModel
+from models import Task, FilterParams,LoginModel,SignupModel,User
 from typing import  Annotated,List
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 app = FastAPI()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    users = Utils.load_json(configs.User_DATABASE_FILE)
+    for user in users:
+        if user.get("username") == token:
+            return User(**user)
+    raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
 @app.get("/tasks/", response_model=List[Task])
 def read_task(
-    filter_params: Annotated[FilterParams, Depends()]
+    filter_params: Annotated[FilterParams, Depends()],_ : Annotated[User, Depends(get_current_user)] 
 ):
     tasks = Utils.get_todo_list()
     tasks = tasks[filter_params.skip : filter_params.skip + filter_params.limit]
@@ -47,20 +57,17 @@ def delete_task(task_id: int):
     except HTTPException as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
-@app.post("/login")
-def login(data: Annotated[LoginModel,Form]):
-    credentials = data.model_dump(exclude={"confirm_password"})
+@app.post("/token")
+def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     users = Utils.load_json(configs.User_DATABASE_FILE)
     
     for user in users:
-        username_match = user.get("username") == credentials.get("username")
-        email_match = user.get("email") == credentials.get("email")
-        password_match = user.get("password") == credentials.get("password")
+        username_match = user.get("username") == form_data.username
+        password_match = user.get("password") == form_data.password
 
-        if (username_match or email_match) and password_match:
-            return JSONResponse(status_code=200, content={"message": "Login successful"})
+        if username_match and password_match:
+            return {"access_token": user["username"], "token_type": "bearer"}
 
-    # If loop completes with no match
     raise HTTPException(status_code=400, detail="Invalid credentials or user does not exist")
         
 

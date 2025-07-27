@@ -7,6 +7,9 @@ requires-python = ">=3.12"
 dependencies = [
     "dataclasses>=0.8",
     "fastapi>=0.116.1",
-    "pydantic>=2.11.7",
+    "passlib[bcrypt]>=1.7.4",
+    "pydantic[email]>=2.11.7",
+    "python-jose[crptography]>=3.5.0",
     "python-multipart>=0.0.20",
+    "uvicorn[standard]>=0.35.0",
 ]
